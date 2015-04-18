@@ -1,0 +1,28 @@
+{
+  "generator-nglib": {
+    "project.name": "ng.cork.authorization",
+    "project.description": "AngularJS services for asynchronous route/action authorization.",
+    "bower.id": "ng.cork.authorization",
+    "npm.id": null,
+    "angular.module": "ng.cork.authorization",
+    "has.tpl": false,
+    "has.css": false,
+    "has.less": false,
+    "has.sass": false,
+    "has.docs": true,
+    "use.git": true,
+    "github.username": "cork-labs",
+    "github.reponame": "ng.cork.authorization",
+    "homepage.url": "https://github.com/cork-labs/ng.cork.authorization",
+    "docs.url": "http://jarvis.cork-labs.org/ng.cork.authorization/current/docs",
+    "bugs.url": "https://github.com/cork-labs/ng.cork.authorization/issues",
+    "license.name": "MIT",
+    "license.url": "http://cork-labs.mit-license.org/2015",
+    "author.name": "Cork Labs",
+    "author.email": "contact@cork-labs.org",
+    "author.url": "http://cork-labs.org",
+    "use.travis": true,
+    "travis.id": "cork-labs/ng.cork.authorization",
+    "repo.url": "git@github.com:cork-labs/ng.cork.authorization.git"
+  }
+}

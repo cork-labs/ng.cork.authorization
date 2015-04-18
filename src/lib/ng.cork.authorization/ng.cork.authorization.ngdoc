@@ -1,0 +1,91 @@
+@ngdoc overview
+@name ng.cork.authorization
+@description
+
+> AngularJS services for asynchronous route/action authorization.
+
+# Dependencies
+
+- Service `ngRoute`, provided by [bower:angular-route](https://github.com/angular/bower-angular-route)
+
+
+# Usage
+
+Add this module as a dependency of your modules.
+
+<pre>
+angular.module('app', ['ng.cork.authorization']);
+</pre>
+
+
+
+## [corkAuthorization](#/api/ng.cork.corkAuthorization.corkAuthorization) Provider.
+
+> **Not Recommended**: Adding middlewares during `config` phase.
+
+Add routes during the `config` phase by invoking `addRoute()` on the {@link ng.cork.authorization.corkAuthorizationProvider corkAuthorizationProvider}.
+
+<pre>
+angular.module('someModule', ['ng.cork.authorization'])
+.config([
+    'corkAuthorizationProvider',
+    function (corkAuthorizationProvider) {
+        corkAuthorizationProvider.addRoute('foo', {
+            pattern: '/foo/:id',
+            controller: 'fooController'
+        });
+    }
+]);
+</pre>
+
+> **Recommended**: Adding authorized routes during `config` phase.
+
+<pre>
+angular.module('someModule', ['ng.cork.authorization'])
+.config([
+    'corkAuthorizationProvider',
+    function (corkAuthorizationProvider) {
+        corkAuthorizationProvider.addRoute('foo', {
+            pattern: '/foo/:id',
+            controller: 'fooController'
+        });
+    }
+]);
+</pre>
+
+
+## [corkAuthorization](#/api/ng.cork.corkAuthorization.corkAuthorization) Service.
+
+> **Recommended**: Adding middlewares during `run` phase.
+
+Use the {@link ng.cork.authorization.corkAuthorization corkAuthorization} service to add routes during the `run` phase.
+
+<pre>
+angular.module('someModule', ['ng.cork.authorization'])
+.config([
+    'run',
+    function (corkAuthorization) {
+        corkAuthorization.addRoute('foo', {
+            pattern: '/foo/:id',
+            controller: 'fooController'
+        });
+    }
+]);
+</pre>
+
+> **Recommended**: Add routes in `run` phase or later.
+
+Use the {@link ng.cork.authorization.corkAuthorization corkAuthorization} service to add routes during the `run` phase.
+
+<pre>
+angular.module('someModule', ['ng.cork.authorization'])
+.config([
+    'run',
+    function (corkAuthorization) {
+        corkAuthorization.addRoute('foo', {
+            pattern: '/foo/:id',
+            controller: 'fooController'
+        });
+    }
+]);
+</pre>
