@@ -6,10 +6,9 @@
 
 > Welcome to the **ng.cork.authorization** API reference.
 
-If you want to know how **ng.cork.authorization** works, checkout the {@link guide/ guide} and the {@link demos/ demos}.
+If you want to know how **ng.cork.authorization** works, checkout the {@link guide/ guide}.
 
 
 ## Modules
 
-- **[ng.cork.authorization](#/api/ng.cork.authorization)** - Provides a configurable service that divides numbers by X, as well as a directive and a filter.
-
+- **[ng.cork.authorization](#/api/ng.cork.authorization)** - Provides a service that authorizes or rejects route changes based on middlewares.

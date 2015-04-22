@@ -195,12 +195,12 @@ module.exports = function (grunt, data) {
                         icon: 'lightbulb',
                         priority: 1
                     },
-                    demos: {
-                        src: ['docs/contents/demos/*.ngdoc'],
-                        title: 'Demos',
-                        icon: 'play-circle',
-                        priority: 2
-                    },
+                    // demos: {
+                    //     src: ['docs/contents/demos/*.ngdoc'],
+                    //     title: 'Demos',
+                    //     icon: 'play-circle',
+                    //     priority: 2
+                    // },
                     api: {
                         src: ['src/**/*.js', '!src/**/*.spec.js', 'src/**/*.ngdoc', 'docs/contents/api/*.ngdoc'],
                         title: 'API',

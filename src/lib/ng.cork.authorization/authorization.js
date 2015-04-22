@@ -48,9 +48,23 @@
     module.factory('CorkAuthorizationError', [
         function CorkAuthorizationErrorFactory() {
 
-            var CorkAuthorizationError = function (redirectPath, $$route) {
+            /**
+             * @ngdoc method
+             * @name CorkAuthorizationError
+             * @methodOf ng.cork.authorization.CorkAuthorizationError
+             *
+             * @description
+             * Constructor.
+             *
+             * @param {string=} redirectPath Optionally set the desired redirect path.
+             *
+             * @property {object} $$route The `$$route` being rejected. A reference to
+             * [$route.current.$$route](https://docs.angularjs.org/api/ngRoute/service/$route), automatically populated
+             * by {@link ng.cork.authorize.corkAuthorization.$authorizeRoute corkAuthorization.$authorizeRoute} when
+             * a route is rejected.
+             */
+            var CorkAuthorizationError = function (redirectPath) {
                 this.redirectPath = redirectPath;
-                this.$$route = $$route;
             };
 
             return CorkAuthorizationError;
@@ -63,10 +77,10 @@
      * @name ng.cork.authorization.corkAuthorizationProvider
      *
      * @description
-     * Provides a way to configure the (@link ng.cork.authorization.corkAuthorization corkAuthorization) service and
+     * Provides a way to configure the {@link ng.cork.authorization.corkAuthorization corkAuthorization} service and
      * a way to reference this service when defining routes at config time.
      *
-     * @property {function} $authorizeRoute When defining routes in the config phase via
+     * @property {function} $authorizeRoute When defining routes in the `config` phase via
      * [$routeProvider.when](https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when) you
      * can add this function in the `resolve` param to trigger authorization of the route.
      * Ex:
@@ -87,7 +101,7 @@
             var provider = this;
 
             /**
-             * @type {Object} provider configuration.
+             * @type {Object} service configuration.
              */
             var serviceConfig = {
                 defaultRedirectPath: '/'
@@ -108,12 +122,12 @@
              * }
              * ```
              */
-            this.configure = function (config) {
+            provider.configure = function (config) {
                 angular.extend(serviceConfig, config);
             };
 
             /**
-             * injectable shotcut to corkAuthorization.$authorizeRoute, documented above as property of the provider
+             * injectable shotcut to {@link ng.cork.authorize.corkAuthorization.$authorizeRoute corkAuthorization.$authorizeRoute}, documented above as property of the provider
              */
             provider.$authorizeRoute = [
                 'corkAuthorization',
@@ -173,28 +187,77 @@
              * @name ng.cork.authorization.corkAuthorization
              *
              * @description
-             * Makes the corkAuthorization service methods available to application controllers and other services.
+             * Authorizes or rejects route changes based on middlewares and optionally redirects.
+             *
+             * Add middlewares to easily express route rules.
              *
              * <pre>
-             * $routeProvider.when('/foo', {
-             *     controller: ...
-             *     resolve: { authorize: corkAuthorizationProvider.$authorizeRoute },
-             *     corkAuthorization: {
-             *         rules: [corkAuthorizationProvider.middleware('isAuthenticated')],
-             *         redirectPath: '/auth/login'
-             *     }
+             * corkAuthorization.middleware('isAdmin', function ($$route) {
+             *     // is the current user allowed to access the $$route?
              * });
              * </pre>
-             */
-
-            /**
-             * @ngdoc service
-             * @name ng.cork.authorization.corkAuthorization
              *
-             * @description
-             * Makes the corkAuthorization service methods available to application controllers and other services.
+             * ## Middlewares
              *
-             * @property {string}  defaultRedirectPath  **String**  *Read-only* The configured default redirect path.
+             * Middlewares can be synchronous or asynchronous.
+             *
+             * ### Synchronous middlewares:
+             *
+             * To accept/reject the route change the middleware can simply return a truthy/falsy value.
+             *
+             * <pre>
+             * corkAuthorization.middleware('isAdmin', function ($$route) {
+             *     return user && user.isAdmin;
+             * });
+             * </pre>
+             *
+             * To reject and force the redirect path, the middleware should return a rejected promise, populated with
+             * the redirectPath or an instance of {@link ng.cork.authorization.CorkAuthorizationError}.
+             *
+             * <pre>
+             * corkAuthorization.middleware('isAdmin', function ($$route) {
+             *     return (user && user.isAdmin) ? true : $q.reject('/redirect/here');
+             *     // ... OR ...
+             *     return (user && user.isAdmin) ? true : $q.reject(new CorkAuthorizationError('/redirect/here'));
+             * });
+             * </pre>
+             *
+             * ### Asynchronous middlewares:
+             *
+             * To accept/reject the route change the middleware can simply resolve/reject its promise.
+             *
+             * <pre>
+             * corkAuthorization.middleware('isAdmin', function ($$route) {
+             *     var defer = $q.defer();
+             *     doAsyncStuff().then(function (data) {
+             *         if (data.something) {
+             *             defer.resolve();
+             *         } else {
+             *             defer.reject();
+             *         }
+             *     });
+             *     return defer.promise();
+             * });
+             * </pre>
+             *
+             * To reject and force the redirect path, the middleware should reject its promise with
+             * the desired redirectPath or an instance of {@link ng.cork.authorization.CorkAuthorizationError}.
+             *
+             * <pre>
+             * corkAuthorization.middleware('isAdmin', function () {
+             *     var defer = $q.defer();
+             *     doAsyncStuff().then(function (data) {
+             *         if (data.something) {
+             *             defer.resolve();
+             *         } else {
+             *             defer.reject('/redirect/here');
+             *             // ... OR ...
+             *             defer.reject(new CorkAuthorizationError('/redirect/here'));
+             *         }
+             *     });
+             *     return defer.promise();
+             * });
+             * </pre>
              */
             provider.$get = [
                 '$rootScope',
@@ -265,8 +328,8 @@
                          * error if the middleware is invalid or a middleware with this name was registered before.
                          *
                          * @param {string} name The middleware name.
-                         * @param {function|Array} middleware A middleware function or an array defining an injectable function.
-                         * @returns {*} The requested middleware function|injectable if called with one argument or the
+                         * @param {function|Array} middleware The middleware function.
+                         * @returns {*} The requested middleware function if called with one argument or the
                          * `corkAuthorization` instance if called with two (for chaining purposes).
                          */
                         self.middleware = function (name, middleware) {
@@ -280,7 +343,21 @@
                          * @methodOf ng.cork.authorization.corkAuthorization
                          *
                          * @description
+                         * When defining routes in the `run` phase via a routeProvider wrapper such as [corkRouter](http://cork-labs.org/projects/ng.cork.router)
+                         * you can add this function in the `resolve` param to trigger authorization of the route.
+                         * Ex:
                          *
+                         * <pre>
+                         * corkRouter.addRoute('foo.edit', {
+                         *     pattern: '/foo/:id/edit',
+                         *     controller: ...
+                         *     resolve: { authorize: corkAuthorization.$authorizeRoute },
+                         *     corkAuthorization: {
+                         *         rules: [corkAuthorization.middleware('isAuthenticated')],
+                         *         redirectPath: '/auth/login'
+                         *     }
+                         * });
+                         * </pre>
                          * @returns {Promise} As expected by [$routeProvider](https://docs.angularjs.org/api/ngRoute/provider/$routeProvider).
                          * Promise is resolved or rejected depending on auhotization being granted or denied.
                          */
@@ -318,9 +395,9 @@
                                     ruleDefer = $q.defer();
                                     promises.push(ruleDefer.promise);
                                     if (returnValue) {
-                                        ruleDefer.reject(returnValue);
-                                    } else {
                                         ruleDefer.resolve();
+                                    } else {
+                                        ruleDefer.reject();
                                     }
                                 }
                                 // invoke each method with it's own deferred AND the route for context

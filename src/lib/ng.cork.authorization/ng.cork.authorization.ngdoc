@@ -2,7 +2,7 @@
 @name ng.cork.authorization
 @description
 
-> AngularJS services for asynchronous route/action authorization.
+> Provides a service that authorizes or rejects route changes based on middlewares.
 
 # Dependencies
 

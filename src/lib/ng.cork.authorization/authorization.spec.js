@@ -258,10 +258,10 @@ describe('ng.cork.authorization', function () {
                         expect(ruleSpy).toHaveBeenCalledWith($mockRoute.current.$$route);
                     }));
 
-                    describe('that returns a falsy value', function () {
+                    describe('that returns a truthy value', function () {
 
                         beforeEach(function () {
-                            ruleSpy.and.returnValue(false);
+                            ruleSpy.and.returnValue(true);
                         });
 
                         it('should resolve.', inject(function (corkAuthorization, $rootScope) {
@@ -274,55 +274,22 @@ describe('ng.cork.authorization', function () {
                         }));
                     });
 
-                    describe('that returns a string', function () {
+                    describe('that returns a falsy value', function () {
 
                         beforeEach(function () {
-                            ruleSpy.and.returnValue('/bar/baz');
+                            ruleSpy.and.returnValue(false);
                         });
 
-                        it('should reject with an instance of CorkAuthorizationError populated with the "redirectPath" and the rejected "$$route".', inject(function (corkAuthorization, CorkAuthorizationError, $rootScope) {
+                        it('should reject with an instance of CorkAuthorizationError with no "redirectPath" and the rejected "$$route".', inject(function (corkAuthorization, CorkAuthorizationError, $rootScope) {
 
                             corkAuthorization.$authorizeRoute().then(resolveSpy, rejectSpy);
                             // trigger the promises
                             $rootScope.$apply();
 
-                            var expected = new CorkAuthorizationError('/bar/baz', $mockRoute.current.$$route);
+                            var expected = new CorkAuthorizationError();
+                            expected.$$route = $mockRoute.current.$$route;
 
                             expect(rejectSpy).toHaveBeenCalledWith(expected);
-                        }));
-                    });
-
-                    describe('that returns an instance of CorkAuthorizationError', function () {
-
-                        beforeEach(inject(function (CorkAuthorizationError) {
-                            ruleSpy.and.returnValue(new CorkAuthorizationError('/bar/baz'));
-                        }));
-
-                        it('should reject with an instance of CorkAuthorizationError populated with the "redirectPath" and the rejected "$$route".', inject(function (corkAuthorization, CorkAuthorizationError, $rootScope) {
-
-                            corkAuthorization.$authorizeRoute().then(resolveSpy, rejectSpy);
-                            // trigger the promises
-                            $rootScope.$apply();
-
-                            var expected = new CorkAuthorizationError('/bar/baz', $mockRoute.current.$$route);
-
-                            expect(rejectSpy).toHaveBeenCalledWith(expected);
-                        }));
-                    });
-
-                    describe('that returns anything else', function () {
-
-                        beforeEach(function () {
-                            ruleSpy.and.returnValue({});
-                        });
-
-                        it('should throw an error.', inject(function (corkAuthorization, CorkAuthorizationError, $rootScope) {
-
-                            corkAuthorization.$authorizeRoute();
-
-                            expect(function () {
-                                $rootScope.$apply();
-                            }).toThrow(new Error('Invalid route rejection error. Must be string with redirectUrl or a CorkAuthorizationError object.'));
                         }));
                     });
 
@@ -362,7 +329,8 @@ describe('ng.cork.authorization', function () {
                                     // trigger the promises
                                     $rootScope.$apply();
 
-                                    var expected = new CorkAuthorizationError('/bar/baz', $mockRoute.current.$$route);
+                                    var expected = new CorkAuthorizationError('/bar/baz');
+                                    expected.$$route = $mockRoute.current.$$route;
 
                                     expect(rejectSpy).toHaveBeenCalledWith(expected);
                                 }));
@@ -382,7 +350,8 @@ describe('ng.cork.authorization', function () {
                                     // trigger the promises
                                     $rootScope.$apply();
 
-                                    var expected = new CorkAuthorizationError('/qux/quux', $mockRoute.current.$$route);
+                                    var expected = new CorkAuthorizationError('/qux/quux');
+                                    expected.$$route = $mockRoute.current.$$route;
 
                                     expect(rejectSpy).toHaveBeenCalledWith(expected);
                                 }));
