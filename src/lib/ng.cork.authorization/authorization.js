@@ -267,6 +267,38 @@
                 'CorkAuthorizationError',
                 function corkAuthorizationFactory($rootScope, $q, $location, $route, CorkAuthorizationError) {
 
+                    /**
+                     * @param {Array} rules. Array of functions
+                     * @param {object} context As in "$$route" or params.
+                     * @returns {Promise} resolved when all rules resolve/reject
+                     */
+                    function execRules(rules, context) {
+                        var promises = [];
+                        var ruleReturnValue;
+                        var ruleDefer;
+                        // collect a local deferred per authorization method
+                        rules.forEach(function (rule, key) {
+                            if (!isFunction(rule)) {
+                                // @todo: a nice way to identify the $$route
+                                throw new Error('Invalid corkAuthorization rule in $$route.');
+                            }
+                            ruleReturnValue = rule(context);
+                            if (isPromise(ruleReturnValue)) {
+                                promises.push(ruleReturnValue);
+                            } else {
+                                ruleDefer = $q.defer();
+                                promises.push(ruleDefer.promise);
+                                if (ruleReturnValue) {
+                                    ruleDefer.resolve();
+                                } else {
+                                    ruleDefer.reject();
+                                }
+                            }
+                            // invoke each method with it's own deferred AND the route for context
+                        });
+                        return $q.all(promises);
+                    }
+
                     // subscribe to route change errors
                     // * @todo test redirects
                     $rootScope.$on('$routeChangeError', function ($event, current, previous, error) {
@@ -314,6 +346,8 @@
 
                     var CorkAuthorization = function () {
                         var self = this;
+
+                        var actions = {};
 
                         /**
                          * @ngdoc function
@@ -368,7 +402,6 @@
                             var $$route = current.$$route;
                             var corkAuthorization = $$route.corkAuthorization;
                             var rules;
-                            var promises;
 
                             // only process routes with a `corkAuthorization` property of type object.
                             // @note: early return
@@ -377,34 +410,8 @@
                                 return defer.promise;
                             }
 
-                            rules = $$route.corkAuthorization.rules;
-                            promises = [];
-
-                            // collect a local deferred per authorization method
-                            var ruleDefer;
-                            var returnValue;
-                            rules.forEach(function (rule, key) {
-                                if (!isFunction(rule)) {
-                                    // @todo: a nice way to identify the $$route
-                                    throw new Error('Invalid corkAuthorization rule in $$route.');
-                                }
-                                returnValue = rule($$route);
-                                if (isPromise(returnValue)) {
-                                    promises.push(returnValue);
-                                } else {
-                                    ruleDefer = $q.defer();
-                                    promises.push(ruleDefer.promise);
-                                    if (returnValue) {
-                                        ruleDefer.resolve();
-                                    } else {
-                                        ruleDefer.reject();
-                                    }
-                                }
-                                // invoke each method with it's own deferred AND the route for context
-                            });
-
                             // when all the authorization functions resolve/reject
-                            $q.all(promises).then(function (resolves) {
+                            execRules($$route.corkAuthorization.rules, $$route).then(function (resolves) {
                                 defer.resolve();
                             }, function (error) {
                                 if (!error || isString(error)) {
@@ -420,6 +427,38 @@
                             });
 
                             return defer.promise;
+                        };
+
+                        self.addAction = function (action, rules) {
+                            actions[action] = rules || [];
+                        };
+
+                        /**
+                         * @param {string} action The action to aprove
+                         */
+                        self.authorizeAction = function (action) {
+                            if (!actions[action]) {
+                                throw new Error('Unknown action "' + action + '".');
+                            }
+
+                            // when all the authorization functions resolve/reject
+                            return execRules(actions[action]);
+                        };
+
+                        self.allowedActions = function (actions) {
+                            var allowedActions = {};
+                            var $refresh = function () {
+                                actions.forEach(function (action) {
+                                    self.authorizeAction(action).then(function () {
+                                        allowedActions[action] = true;
+                                    }, function () {
+                                        delete allowedActions[action];
+                                    });
+                                });
+                            };
+                            allowedActions.$refresh = $refresh;
+                            $refresh();
+                            return allowedActions;
                         };
                     };
 
