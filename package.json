@@ -1,6 +1,6 @@
 {
   "name": "ng.cork.authorization",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "AngularJS services for asynchronous route/action authorization.",
   "author": {
     "name": "Cork Labs",

@@ -1,5 +1,5 @@
 /**
- * ng.cork.authorization - v0.0.2 - 2015-04-22
+ * ng.cork.authorization - v0.0.3 - 2015-04-29
  * https://github.com/cork-labs/ng.cork.authorization
  *
  * Copyright (c) 2015 Cork Labs <http://cork-labs.org>
@@ -90,7 +90,6 @@
      * @property {function} $authorizeRoute When defining routes in the `config` phase via
      * [$routeProvider.when](https://docs.angularjs.org/api/ngRoute/provider/$routeProvider#when) you
      * can add this function in the `resolve` param to trigger authorization of the route.
-     * Ex:
      *
      * <pre>
      * $routeProvider.when('/foo', {
@@ -274,6 +273,38 @@
                 'CorkAuthorizationError',
                 function corkAuthorizationFactory($rootScope, $q, $location, $route, CorkAuthorizationError) {
 
+                    /**
+                     * @param {Array} rules. Array of functions
+                     * @param {object} context As in "$$route" or params.
+                     * @returns {Promise} Resolved when all rules resolve/reject
+                     */
+                    function execRules(rules, context) {
+                        var promises = [];
+                        var ruleReturnValue;
+                        var ruleDefer;
+                        // collect a local deferred per authorization method
+                        rules.forEach(function (rule, key) {
+                            if (!isFunction(rule)) {
+                                // @todo: a nice way to identify the $$route
+                                throw new Error('Invalid corkAuthorization rule in $$route.');
+                            }
+                            ruleReturnValue = rule(context);
+                            if (isPromise(ruleReturnValue)) {
+                                promises.push(ruleReturnValue);
+                            } else {
+                                ruleDefer = $q.defer();
+                                promises.push(ruleDefer.promise);
+                                if (ruleReturnValue) {
+                                    ruleDefer.resolve();
+                                } else {
+                                    ruleDefer.reject();
+                                }
+                            }
+                            // invoke each method with it's own deferred AND the route for context
+                        });
+                        return $q.all(promises);
+                    }
+
                     // subscribe to route change errors
                     // * @todo test redirects
                     $rootScope.$on('$routeChangeError', function ($event, current, previous, error) {
@@ -322,6 +353,8 @@
                     var CorkAuthorization = function () {
                         var self = this;
 
+                        var actions = {};
+
                         /**
                          * @ngdoc function
                          * @name middleware
@@ -352,7 +385,6 @@
                          * @description
                          * When defining routes in the `run` phase via a routeProvider wrapper such as [corkRouter](http://cork-labs.org/projects/ng.cork.router)
                          * you can add this function in the `resolve` param to trigger authorization of the route.
-                         * Ex:
                          *
                          * <pre>
                          * corkRouter.addRoute('foo.edit', {
@@ -365,6 +397,7 @@
                          *     }
                          * });
                          * </pre>
+                         *
                          * @returns {Promise} As expected by [$routeProvider](https://docs.angularjs.org/api/ngRoute/provider/$routeProvider).
                          * Promise is resolved or rejected depending on auhotization being granted or denied.
                          */
@@ -375,7 +408,6 @@
                             var $$route = current.$$route;
                             var corkAuthorization = $$route.corkAuthorization;
                             var rules;
-                            var promises;
 
                             // only process routes with a `corkAuthorization` property of type object.
                             // @note: early return
@@ -384,34 +416,8 @@
                                 return defer.promise;
                             }
 
-                            rules = $$route.corkAuthorization.rules;
-                            promises = [];
-
-                            // collect a local deferred per authorization method
-                            var ruleDefer;
-                            var returnValue;
-                            rules.forEach(function (rule, key) {
-                                if (!isFunction(rule)) {
-                                    // @todo: a nice way to identify the $$route
-                                    throw new Error('Invalid corkAuthorization rule in $$route.');
-                                }
-                                returnValue = rule($$route);
-                                if (isPromise(returnValue)) {
-                                    promises.push(returnValue);
-                                } else {
-                                    ruleDefer = $q.defer();
-                                    promises.push(ruleDefer.promise);
-                                    if (returnValue) {
-                                        ruleDefer.resolve();
-                                    } else {
-                                        ruleDefer.reject();
-                                    }
-                                }
-                                // invoke each method with it's own deferred AND the route for context
-                            });
-
                             // when all the authorization functions resolve/reject
-                            $q.all(promises).then(function (resolves) {
+                            execRules($$route.corkAuthorization.rules, $$route).then(function (resolves) {
                                 defer.resolve();
                             }, function (error) {
                                 if (!error || isString(error)) {
@@ -427,6 +433,104 @@
                             });
 
                             return defer.promise;
+                        };
+
+                        /**
+                         * @ngdoc function
+                         * @name addAction
+                         * @methodOf ng.cork.authorization.corkAuthorization
+                         *
+                         * @description
+                         * Registers an action with authorization rules.
+                         *
+                         * <pre>
+                         * corkRouter.addAction('foo.edit', [
+                         *     corkAuthorization.middleware('isAuthenticated'),
+                         *     function () { return true; }
+                         * ]);
+                         * </pre>
+                         *
+                         * @param {string} action The action to to register.
+                         * @param {array} rules The rules for this action.
+                         */
+                        self.addAction = function (action, rules) {
+                            actions[action] = rules || [];
+                        };
+
+                        /**
+                         * @ngdoc function
+                         * @name authorizeAction
+                         * @methodOf ng.cork.authorization.corkAuthorization
+                         *
+                         * @description
+                         * Checks if the action is currently authorized.
+                         *
+                         * <pre>
+                         * corkRouter.authorizeAction('foo.edit').then(
+                         *     function () { 
+                         *         // was authorized
+                         *     }, function () { 
+                         *         // was NOT authorized
+                         *     }
+                         * );
+                         * </pre>
+                         *
+                         * @param {string} action The action to approve.
+                         * @returns {Promise} Resolved when all authorization rules resolve, rejected as soon as one of them is rejected.
+                         */
+                        self.authorizeAction = function (action) {
+                            if (!actions[action]) {
+                                throw new Error('Unknown action "' + action + '".');
+                            }
+
+                            // when all the authorization functions resolve/reject
+                            return execRules(actions[action]);
+                        };
+
+                        /**
+                         * @ngdoc function
+                         * @name allowedActions
+                         * @methodOf ng.cork.authorization.corkAuthorization
+                         *
+                         * @description
+                         * Returns an object where the keys are the action names and the value is a boolean indicating if the action has been authorized.
+                         *
+                         * <pre>
+                         * $scope.allowedActions = corkRouter.allowedActions(['foo.edit', 'foo.create']);
+                         * </pre>
+                         *
+                         * If an action is authorized the corresponding key will be truthy, else, it will not exist.
+                         * <pre>
+                         * <div ng-if="allowedActions['foo.edit']"> ... </div>
+                         * </pre>
+                         *
+                         * You can force the rules for each action to be processed again by invoking `$refresh()`.
+                         * <pre>
+                         * allowedActions.$refresh();
+                         * </pre>
+                         *
+                         * **Note:** authorization is always asynchronous, therefore you can't check the value of the rules 
+                         *
+                         * @todo: the returned object should have a `$then()` function, bound to a promise always resolved when all actions are resolved/rejected. 
+                         * @todo: calling `$refresh()` must cancel any rules currently being processed to avoid race conditions. It should also replace the promise bound to `$then()`. See how `ng.cork.identity` implements this.
+                         *
+                         * @param {string} action The action to query.
+                         * @returns {Object} A map of actions with a `$refresh()` function attached.
+                         */
+                        self.allowedActions = function (actions) {
+                            var allowedActions = {};
+                            var $refresh = function () {
+                                actions.forEach(function (action) {
+                                    self.authorizeAction(action).then(function () {
+                                        allowedActions[action] = true;
+                                    }, function () {
+                                        delete allowedActions[action];
+                                    });
+                                });
+                            };
+                            allowedActions.$refresh = $refresh;
+                            $refresh();
+                            return allowedActions;
                         };
                     };
 

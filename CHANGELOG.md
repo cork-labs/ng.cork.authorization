@@ -1,3 +1,12 @@
+<a name="v0.0.3"></a>
+### v0.0.3 (2015-04-29)
+
+
+#### Features
+
+* **actions:** register and authorize actions ([a340d82a](git@github.com:cork-labs/ng.cork.authorization/commit/a340d82ae6dbdefb6b843bae12e0d60ba3647469))
+* **authorizeAction:** fuck commit messages, first commit from a fucking plane ([f4094ecc](git@github.com:cork-labs/ng.cork.authorization/commit/f4094ecce64ad868adfe7192b0e22c27914d3cbb))
+
 <a name="v0.0.2"></a>
 ### v0.0.2 (2015-04-22)
 
