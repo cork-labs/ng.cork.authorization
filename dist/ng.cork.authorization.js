@@ -1,5 +1,5 @@
 /**
- * ng.cork.authorization - v0.0.3 - 2015-04-29
+ * ng.cork.authorization - v0.0.4 - 2015-05-03
  * https://github.com/cork-labs/ng.cork.authorization
  *
  * Copyright (c) 2015 Cork Labs <http://cork-labs.org>
